@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>周六值班表</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 8px;
+    }
+
+    header .subtitle {
+      font-size: 14px;
+      color: #888;
+    }
+
+    .header-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .today-banner {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      padding: 14px 20px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .today-banner .icon { font-size: 20px; }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-primary:hover { background: #5a6fd6; }
+
+    .btn-danger { background: #fee; color: #e74c3c; }
+    .btn-danger:hover { background: #fdd; }
+
+    .btn-outline {
+      background: transparent;
+      color: #667eea;
+      border: 1.5px solid #667eea;
+    }
+    .btn-outline:hover { background: #f0f4ff; }
+
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #f0f2f5;
+    }
+
+    tbody td {
+      padding: 14px 16px;
+      font-size: 15px;
+      border-bottom: 1px solid #f5f5f5;
+      vertical-align: middle;
+    }
+
+    tbody tr { transition: background 0.15s; }
+    tbody tr:hover { background: #fafbff; }
+
+    tr.today-row {
+      background: #f0f4ff !important;
+      border-left: 4px solid #667eea;
+    }
+    tr.today-row td:first-child { padding-left: 12px; }
+    tr.past-row { opacity: 0.5; }
+
+    .date-cell { font-weight: 600; color: #1a1a2e; }
+    .date-cell .weekday { font-size: 12px; color: #999; font-weight: 400; }
+
+    .name-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .name-badge.male { background: #e8f4fd; color: #2980b9; }
+    .name-badge.female { background: #fde8f0; color: #c0392b; }
+    .name-badge .gender-icon { font-size: 12px; }
+
+    .today-badge {
+      display: inline-block;
+      background: #667eea;
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      font-weight: 600;
+    }
+
+    .editable { cursor: pointer; position: relative; }
+    .editable:hover { text-decoration: underline dotted; opacity: 0.8; }
+
+    .edit-select {
+      padding: 4px 8px;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+    }
+
+    .personnel-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 640px) {
+      .personnel-section { grid-template-columns: 1fr; }
+    }
+
+    .personnel-group h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .personnel-group h3 .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .personnel-group h3 .dot.male { background: #2980b9; }
+    .personnel-group h3 .dot.female { background: #c0392b; }
+
+    .person-list { list-style: none; margin-bottom: 12px; }
+
+    .person-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      font-size: 14px;
+      background: #fafafa;
+    }
+
+    .person-list li .remove-btn {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+    .person-list li .remove-btn:hover { color: #e74c3c; background: #fee; }
+
+    .delete-row-btn {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .delete-row-btn:hover { color: #e74c3c; background: #fee; }
+
+    .add-person { display: flex; gap: 8px; }
+
+    .add-person input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 2px solid #eee;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .add-person input:focus { border-color: #667eea; }
+
+    .nav-buttons { display: flex; gap: 8px; align-items: center; }
+
+    .btn-icon {
+      background: #f5f5f5;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .btn-icon:hover { background: #eee; }
+
+    .week-label { font-size: 13px; color: #888; font-weight: 500; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #333;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1000;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Login modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      width: 360px;
+      max-width: 90vw;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    }
+
+    .modal h3 {
+      font-size: 18px;
+      margin-bottom: 20px;
+      text-align: center;
+      color: #1a1a2e;
+    }
+
+    .modal input[type="password"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid #eee;
+      border-radius: 10px;
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+    .modal input[type="password"]:focus { border-color: #667eea; }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-actions .btn { flex: 1; padding: 10px; font-size: 14px; }
+
+    .login-error {
+      color: #e74c3c;
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 12px;
+      min-height: 18px;
+    }
+
+    .admin-tag {
+      display: inline-block;
+      background: #667eea;
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      font-weight: 600;
+    }
+
+    .visitor-notice {
+      text-align: center;
+      padding: 12px;
+      background: #fffbe6;
+      border: 1px solid #ffe58f;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #8c6d1f;
+      margin-bottom: 16px;
+    }
+
+    .admin-only { display: none; }
+    body.admin-mode .admin-only { display: revert; }
+    body.admin-mode .visitor-notice { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>周六值班表<span id="adminTag" class="admin-tag" style="display:none;">管理员</span></h1>
+      <p class="subtitle">每周六安排一男一女值班，轮流进行</p>
+      <div class="header-actions">
+        <button class="btn btn-outline" id="loginBtn">管理员登录</button>
+        <button class="btn btn-outline" id="logoutBtn" style="display:none;">退出登录</button>
+      </div>
+    </header>
+
+    <div id="todayBanner" class="today-banner" style="display:none;">
+      <span class="icon">&#128197;</span>
+      <span id="bannerText"></span>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>值班安排</h2>
+        <div class="nav-buttons">
+          <button class="btn-icon" onclick="changeWeekRange(-1)" title="往前">&#9664;</button>
+          <span class="week-label" id="weekLabel"></span>
+          <button class="btn-icon" onclick="changeWeekRange(1)" title="往后">&#9654;</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>男生值班</th>
+            <th>女生值班</th>
+            <th class="admin-only" style="width:60px;"></th>
+          </tr>
+        </thead>
+        <tbody id="scheduleBody"></tbody>
+      </table>
+    </div>
+
+    <div class="card admin-only" id="adminCard">
+      <div class="card-header">
+        <h2>人员管理</h2>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" id="autoBtn">自动排班</button>
+          <button class="btn btn-danger" id="resetBtn">清空排班</button>
+        </div>
+      </div>
+      <div class="personnel-section">
+        <div class="personnel-group">
+          <h3><span class="dot male"></span>男生</h3>
+          <ul class="person-list" id="maleList"></ul>
+          <div class="add-person">
+            <input type="text" id="addMaleInput" placeholder="输入姓名" onkeydown="if(event.key==='Enter')addPerson('male')">
+            <button class="btn btn-primary btn-sm" onclick="addPerson('male')">添加</button>
+          </div>
+        </div>
+        <div class="personnel-group">
+          <h3><span class="dot female"></span>女生</h3>
+          <ul class="person-list" id="femaleList"></ul>
+          <div class="add-person">
+            <input type="text" id="addFemaleInput" placeholder="输入姓名" onkeydown="if(event.key==='Enter')addPerson('female')">
+            <button class="btn btn-primary btn-sm" onclick="addPerson('female')">添加</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="visitor-notice" id="visitorNotice">
+      当前为游客模式，仅可查看排班。点击"管理员登录"后可编辑。
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal">
+      <h3>管理员登录</h3>
+      <div class="login-error" id="loginError"></div>
+      <input type="password" id="passwordInput" placeholder="请输入管理员密码" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="cancelLogin">取消</button>
+        <button class="btn btn-primary" id="confirmLogin">登录</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_KEY = 'saturday-duty-schedule';
+    const ADMIN_PASSWORD = 'admin123';
+
+    const DEFAULT_MALES = ['郑卫', '隋洪磊', '刘金明', '小贾', '唐文浩'];
+    const DEFAULT_FEMALES = ['杨懿', '林千吉', '王晓萌', '张萍', '高好'];
+
+    let state = loadState();
+    let weekOffset = -1;
+    const WEEKS_TO_SHOW = 8;
+    let isAdmin = sessionStorage.getItem('admin_logged_in') === 'true';
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.males && parsed.females && parsed.assignments) return parsed;
+        }
+      } catch (e) {}
+      return { males: [...DEFAULT_MALES], females: [...DEFAULT_FEMALES], assignments: {} };
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function getSaturdays(startOffset, count) {
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const daysUntilSaturday = (6 - dayOfWeek + 7) % 7;
+      const firstSaturday = new Date(today);
+      firstSaturday.setDate(today.getDate() + daysUntilSaturday + startOffset * 7);
+      const saturdays = [];
+      for (let i = 0; i < count; i++) {
+        const sat = new Date(firstSaturday);
+        sat.setDate(firstSaturday.getDate() + i * 7);
+        saturdays.push(sat);
+      }
+      return saturdays;
+    }
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function isToday(date) {
+      const today = new Date();
+      return date.getFullYear() === today.getFullYear()
+        && date.getMonth() === today.getMonth()
+        && date.getDate() === today.getDate();
+    }
+
+    function isPast(date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return date < today;
+    }
+
+    function getAssignment(dateStr) {
+      if (state.assignments[dateStr]) return state.assignments[dateStr];
+      return null;
+    }
+
+    function getDefaultName(index, gender) {
+      const pool = gender === 'male' ? state.males : state.females;
+      if (pool.length === 0) return null;
+      return pool[index % pool.length];
+    }
+
+    function autoSchedule() {
+      if (!isAdmin) return;
+      const saturdays = getSaturdays(0, 52);
+      saturdays.forEach((sat, i) => {
+        const dateStr = formatDate(sat);
+        if (!state.assignments[dateStr]) state.assignments[dateStr] = {};
+        if (!state.assignments[dateStr].male) state.assignments[dateStr].male = getDefaultName(i, 'male');
+        if (!state.assignments[dateStr].female) state.assignments[dateStr].female = getDefaultName(i, 'female');
+      });
+      saveState();
+      renderSchedule();
+      showToast('已自动填充排班');
+    }
+
+    function renderSchedule() {
+      const saturdays = getSaturdays(weekOffset, WEEKS_TO_SHOW);
+      const tbody = document.getElementById('scheduleBody');
+      tbody.innerHTML = '';
+
+      const startLabel = formatDate(saturdays[0]);
+      const endLabel = formatDate(saturdays[saturdays.length - 1]);
+      document.getElementById('weekLabel').textContent = `${startLabel} ~ ${endLabel}`;
+
+      saturdays.forEach((sat, i) => {
+        const dateStr = formatDate(sat);
+        const today = isToday(sat);
+        const past = isPast(sat) && !today;
+
+        const assignment = getAssignment(dateStr);
+        const maleName = assignment?.male || '待安排';
+        const femaleName = assignment?.female || '待安排';
+
+        const tr = document.createElement('tr');
+        if (today) tr.className = 'today-row';
+        else if (past) tr.className = 'past-row';
+
+        const month = sat.getMonth() + 1;
+        const day = sat.getDate();
+
+        const clickAttr = isAdmin ? `onclick="editName('${dateStr}','male',${i})"` : '';
+        const clickAttrF = isAdmin ? `onclick="editName('${dateStr}','female',${i})"` : '';
+        const editableClass = isAdmin ? 'editable' : '';
+
+        tr.innerHTML = `
+          <td class="date-cell">
+            ${month}月${day}日
+            ${today ? '<span class="today-badge">今天</span>' : ''}
+          </td>
+          <td>
+            <span class="name-badge male ${editableClass}" ${clickAttr}>
+              <span class="gender-icon">&#9794;</span>
+              <span class="name-text">${maleName}</span>
+            </span>
+          </td>
+          <td>
+            <span class="name-badge female ${editableClass}" ${clickAttrF}>
+              <span class="gender-icon">&#9792;</span>
+              <span class="name-text">${femaleName}</span>
+            </span>
+          </td>
+          <td class="admin-only">
+            ${assignment ? `<button class="delete-row-btn" onclick="deleteAssignment('${dateStr}')" title="删除该日排班">&times;</button>` : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      updateBanner();
+    }
+
+    function editName(dateStr, gender, index) {
+      if (!isAdmin) return;
+      const pool = gender === 'male' ? state.males : state.females;
+      if (pool.length === 0) { showToast('请先添加人员'); return; }
+
+      const badge = event.currentTarget;
+      const nameText = badge.querySelector('.name-text');
+      const currentName = nameText.textContent;
+
+      const select = document.createElement('select');
+      select.className = 'edit-select';
+      pool.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (name === currentName) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      nameText.replaceWith(select);
+      select.focus();
+
+      const commit = () => {
+        const newName = select.value;
+        if (!state.assignments[dateStr]) state.assignments[dateStr] = {};
+        state.assignments[dateStr][gender] = newName;
+        saveState();
+        renderSchedule();
+        showToast('已更新值班人员');
+      };
+
+      select.addEventListener('change', commit);
+      select.addEventListener('blur', () => { renderSchedule(); });
+    }
+
+    function renderPersonnel() {
+      const maleList = document.getElementById('maleList');
+      const femaleList = document.getElementById('femaleList');
+
+      maleList.innerHTML = '';
+      state.males.forEach((name, i) => { maleList.appendChild(createPersonItem(name, 'male', i)); });
+
+      femaleList.innerHTML = '';
+      state.females.forEach((name, i) => { femaleList.appendChild(createPersonItem(name, 'female', i)); });
+    }
+
+    function createPersonItem(name, gender, index) {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <span>${name}</span>
+        <button class="remove-btn" onclick="removePerson('${gender}',${index})" title="移除">&times;</button>
+      `;
+      return li;
+    }
+
+    function addPerson(gender) {
+      if (!isAdmin) return;
+      const inputId = gender === 'male' ? 'addMaleInput' : 'addFemaleInput';
+      const input = document.getElementById(inputId);
+      const name = input.value.trim();
+      if (!name) return;
+
+      const pool = gender === 'male' ? state.males : state.females;
+      if (pool.includes(name)) { showToast('该人员已存在'); return; }
+
+      pool.push(name);
+      saveState();
+      renderPersonnel();
+      renderSchedule();
+      input.value = '';
+      showToast(`已添加 ${name}`);
+    }
+
+    function removePerson(gender, index) {
+      if (!isAdmin) return;
+      const pool = gender === 'male' ? state.males : state.females;
+      const name = pool[index];
+      if (pool.length <= 1) { showToast('至少保留一名人员'); return; }
+      pool.splice(index, 1);
+      saveState();
+      renderPersonnel();
+      renderSchedule();
+      showToast(`已移除 ${name}`);
+    }
+
+    function deleteAssignment(dateStr) {
+      if (!isAdmin) return;
+      delete state.assignments[dateStr];
+      saveState();
+      renderSchedule();
+      showToast(`已删除 ${dateStr} 的排班`);
+    }
+
+    function resetSchedule() {
+      if (!isAdmin) return;
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const daysUntilSaturday = (6 - dayOfWeek + 7) % 7;
+      const thisSaturday = new Date(today);
+      thisSaturday.setDate(today.getDate() + daysUntilSaturday);
+      thisSaturday.setHours(0, 0, 0, 0);
+
+      Object.keys(state.assignments).forEach(dateStr => {
+        if (new Date(dateStr) >= thisSaturday) {
+          delete state.assignments[dateStr];
+        }
+      });
+
+      saveState();
+      renderSchedule();
+      showToast('已清空本周及之后的排班');
+    }
+
+    function changeWeekRange(dir) {
+      weekOffset += dir;
+      if (weekOffset < -4) weekOffset = -4;
+      renderSchedule();
+    }
+
+    function updateBanner() {
+      const banner = document.getElementById('todayBanner');
+      const text = document.getElementById('bannerText');
+      const today = new Date();
+
+      if (today.getDay() === 6) {
+        const dateStr = formatDate(today);
+        const a = getAssignment(dateStr);
+        const maleName = a?.male || '待安排';
+        const femaleName = a?.female || '待安排';
+        text.textContent = `今天值班：${maleName}（男）、${femaleName}（女）`;
+        banner.style.display = 'flex';
+      } else {
+        const daysUntilSat = (6 - today.getDay() + 7) % 7;
+        const nextSat = new Date(today);
+        nextSat.setDate(today.getDate() + daysUntilSat);
+        const dateStr = formatDate(nextSat);
+        const a = getAssignment(dateStr);
+        const maleName = a?.male || '待安排';
+        const femaleName = a?.female || '待安排';
+        const month = nextSat.getMonth() + 1;
+        const day = nextSat.getDate();
+        text.textContent = `本周六（${month}月${day}日）值班：${maleName}（男）、${femaleName}（女）`;
+        banner.style.display = 'flex';
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // Login / Logout
+    function showLoginModal() {
+      document.getElementById('loginModal').classList.add('show');
+      document.getElementById('passwordInput').value = '';
+      document.getElementById('loginError').textContent = '';
+      setTimeout(() => document.getElementById('passwordInput').focus(), 100);
+    }
+
+    function hideLoginModal() {
+      document.getElementById('loginModal').classList.remove('show');
+    }
+
+    function doLogin() {
+      const pwd = document.getElementById('passwordInput').value;
+      if (pwd === ADMIN_PASSWORD) {
+        isAdmin = true;
+        sessionStorage.setItem('admin_logged_in', 'true');
+        hideLoginModal();
+        applyAdminUI();
+        showToast('登录成功');
+      } else {
+        document.getElementById('loginError').textContent = '密码错误，请重试';
+      }
+    }
+
+    function doLogout() {
+      isAdmin = false;
+      sessionStorage.removeItem('admin_logged_in');
+      applyAdminUI();
+      showToast('已退出登录');
+    }
+
+    function applyAdminUI() {
+      document.getElementById('adminTag').style.display = isAdmin ? 'inline-block' : 'none';
+      document.getElementById('loginBtn').style.display = isAdmin ? 'none' : 'inline-block';
+      document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none';
+      document.body.classList.toggle('admin-mode', isAdmin);
+      renderSchedule();
+      renderPersonnel();
+    }
+
+    renderSchedule();
+    renderPersonnel();
+    applyAdminUI();
+
+    document.getElementById('loginBtn').addEventListener('click', showLoginModal);
+    document.getElementById('logoutBtn').addEventListener('click', doLogout);
+    document.getElementById('confirmLogin').addEventListener('click', doLogin);
+    document.getElementById('cancelLogin').addEventListener('click', hideLoginModal);
+    document.getElementById('resetBtn').addEventListener('click', resetSchedule);
+    document.getElementById('autoBtn').addEventListener('click', autoSchedule);
+
+    document.getElementById('loginModal').addEventListener('click', function(e) {
+      if (e.target === this) hideLoginModal();
+    });
+  </script>
+</body>
+</html>
