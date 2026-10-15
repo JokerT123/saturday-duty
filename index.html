@@ -471,7 +471,13 @@
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed.males && parsed.females && parsed.assignments) return parsed;
+          if (parsed.males && parsed.females && parsed.assignments) {
+            Object.values(parsed.assignments).forEach(a => {
+              if (typeof a.male === 'string') a.male = [a.male];
+              if (typeof a.female === 'string') a.female = [a.female];
+            });
+            return parsed;
+          }
         }
       } catch (e) {}
       return { males: [...DEFAULT_MALES], females: [...DEFAULT_FEMALES], assignments: {} };
@@ -533,8 +539,8 @@
       saturdays.forEach((sat, i) => {
         const dateStr = formatDate(sat);
         if (!state.assignments[dateStr]) state.assignments[dateStr] = {};
-        if (!state.assignments[dateStr].male) state.assignments[dateStr].male = getDefaultName(i, 'male');
-        if (!state.assignments[dateStr].female) state.assignments[dateStr].female = getDefaultName(i, 'female');
+        if (!state.assignments[dateStr].male) state.assignments[dateStr].male = [getDefaultName(i, 'male')];
+        if (!state.assignments[dateStr].female) state.assignments[dateStr].female = [getDefaultName(i, 'female')];
       });
       saveState();
       renderSchedule();
@@ -556,8 +562,10 @@
         const past = isPast(sat) && !today;
 
         const assignment = getAssignment(dateStr);
-        const maleName = assignment?.male || '待安排';
-        const femaleName = assignment?.female || '待安排';
+        const maleNames = assignment?.male || [];
+        const femaleNames = assignment?.female || [];
+        const maleDisplay = maleNames.length ? maleNames.join('、') : '待安排';
+        const femaleDisplay = femaleNames.length ? femaleNames.join('、') : '待安排';
 
         const tr = document.createElement('tr');
         if (today) tr.className = 'today-row';
@@ -566,8 +574,6 @@
         const month = sat.getMonth() + 1;
         const day = sat.getDate();
 
-        const clickAttr = isAdmin ? `onclick="editName('${dateStr}','male',${i})"` : '';
-        const clickAttrF = isAdmin ? `onclick="editName('${dateStr}','female',${i})"` : '';
         const editableClass = isAdmin ? 'editable' : '';
 
         tr.innerHTML = `
@@ -576,60 +582,96 @@
             ${today ? '<span class="today-badge">今天</span>' : ''}
           </td>
           <td>
-            <span class="name-badge male ${editableClass}" ${clickAttr}>
+            <span class="name-badge male ${editableClass}" data-date="${dateStr}" data-gender="male">
               <span class="gender-icon">&#9794;</span>
-              <span class="name-text">${maleName}</span>
+              <span class="name-text">${maleDisplay}</span>
             </span>
           </td>
           <td>
-            <span class="name-badge female ${editableClass}" ${clickAttrF}>
+            <span class="name-badge female ${editableClass}" data-date="${dateStr}" data-gender="female">
               <span class="gender-icon">&#9792;</span>
-              <span class="name-text">${femaleName}</span>
+              <span class="name-text">${femaleDisplay}</span>
             </span>
           </td>
           <td class="admin-only">
-            ${assignment ? `<button class="delete-row-btn" onclick="deleteAssignment('${dateStr}')" title="删除该日排班">&times;</button>` : ''}
+            ${assignment ? `<button class="delete-row-btn" data-date="${dateStr}" title="删除该日排班">&times;</button>` : ''}
           </td>
         `;
         tbody.appendChild(tr);
       });
 
+      if (isAdmin) {
+        tbody.querySelectorAll('.name-badge.editable').forEach(badge => {
+          badge.addEventListener('click', () => {
+            const dateStr = badge.dataset.date;
+            const gender = badge.dataset.gender;
+            editName(dateStr, gender, badge);
+          });
+        });
+        tbody.querySelectorAll('.delete-row-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const dateStr = btn.dataset.date;
+            deleteAssignment(dateStr);
+          });
+        });
+      }
+
       updateBanner();
     }
 
-    function editName(dateStr, gender, index) {
+    function editName(dateStr, gender, badge) {
       if (!isAdmin) return;
       const pool = gender === 'male' ? state.males : state.females;
       if (pool.length === 0) { showToast('请先添加人员'); return; }
 
-      const badge = event.currentTarget;
       const nameText = badge.querySelector('.name-text');
-      const currentName = nameText.textContent;
+      const assignment = getAssignment(dateStr);
+      const currentNames = assignment?.[gender] || [];
 
-      const select = document.createElement('select');
-      select.className = 'edit-select';
+      const container = document.createElement('div');
+      container.className = 'edit-multi-select';
+      container.style.cssText = 'position:absolute;background:#fff;border:2px solid #667eea;border-radius:10px;padding:10px;z-index:100;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,0.12);';
+
       pool.forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        if (name === currentName) opt.selected = true;
-        select.appendChild(opt);
+        const label = document.createElement('label');
+        label.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;font-size:14px;';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = name;
+        cb.checked = currentNames.includes(name);
+        cb.style.cssText = 'width:16px;height:16px;accent-color:#667eea;';
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(name));
+        container.appendChild(label);
       });
 
-      nameText.replaceWith(select);
-      select.focus();
+      const confirmBtn = document.createElement('button');
+      confirmBtn.textContent = '确定';
+      confirmBtn.className = 'btn btn-primary btn-sm';
+      confirmBtn.style.cssText = 'width:100%;margin-top:8px;';
+      container.appendChild(confirmBtn);
+
+      badge.style.position = 'relative';
+      nameText.replaceWith(container);
 
       const commit = () => {
-        const newName = select.value;
+        const selected = [...container.querySelectorAll('input[type=checkbox]')]
+          .filter(cb => cb.checked).map(cb => cb.value);
         if (!state.assignments[dateStr]) state.assignments[dateStr] = {};
-        state.assignments[dateStr][gender] = newName;
+        if (selected.length > 0) {
+          state.assignments[dateStr][gender] = selected;
+        } else {
+          delete state.assignments[dateStr][gender];
+          if (Object.keys(state.assignments[dateStr]).length === 0) {
+            delete state.assignments[dateStr];
+          }
+        }
         saveState();
         renderSchedule();
-        showToast('已更新值班人员');
+        showToast(`已更新${gender === 'male' ? '男生' : '女生'}值班人员`);
       };
 
-      select.addEventListener('change', commit);
-      select.addEventListener('blur', () => { renderSchedule(); });
+      confirmBtn.addEventListener('click', commit);
     }
 
     function renderPersonnel() {
@@ -724,8 +766,10 @@
       if (today.getDay() === 6) {
         const dateStr = formatDate(today);
         const a = getAssignment(dateStr);
-        const maleName = a?.male || '待安排';
-        const femaleName = a?.female || '待安排';
+        const maleNames = a?.male || [];
+        const femaleNames = a?.female || [];
+        const maleName = maleNames.length ? maleNames.join('、') : '待安排';
+        const femaleName = femaleNames.length ? femaleNames.join('、') : '待安排';
         text.textContent = `今天值班：${maleName}（男）、${femaleName}（女）`;
         banner.style.display = 'flex';
       } else {
@@ -734,8 +778,10 @@
         nextSat.setDate(today.getDate() + daysUntilSat);
         const dateStr = formatDate(nextSat);
         const a = getAssignment(dateStr);
-        const maleName = a?.male || '待安排';
-        const femaleName = a?.female || '待安排';
+        const maleNames = a?.male || [];
+        const femaleNames = a?.female || [];
+        const maleName = maleNames.length ? maleNames.join('、') : '待安排';
+        const femaleName = femaleNames.length ? femaleNames.join('、') : '待安排';
         const month = nextSat.getMonth() + 1;
         const day = nextSat.getDate();
         text.textContent = `本周六（${month}月${day}日）值班：${maleName}（男）、${femaleName}（女）`;
