@@ -205,6 +205,17 @@
       font-size: 16px;
     }
 
+    .rest-balance-item .balance.editable {
+      cursor: pointer;
+      padding: 2px 8px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .rest-balance-item .balance.editable:hover {
+      background: #e8ecff;
+    }
+
     .today-badge {
       display: inline-block;
       background: #667eea;
@@ -546,11 +557,12 @@
               if (typeof a.male === 'string') a.male = [a.male];
               if (typeof a.female === 'string') a.female = [a.female];
             });
+            if (!parsed.restAdjustments) parsed.restAdjustments = {};
             return parsed;
           }
         }
       } catch (e) {}
-      return { males: [...DEFAULT_MALES], females: [...DEFAULT_FEMALES], assignments: {} };
+      return { males: [...DEFAULT_MALES], females: [...DEFAULT_FEMALES], assignments: {}, restAdjustments: {} };
     }
 
     function saveState() {
@@ -789,6 +801,11 @@
         });
       });
 
+      // 加上手动调整
+      Object.entries(state.restAdjustments).forEach(([name, adj]) => {
+        if (balance[name] !== undefined) balance[name] += adj;
+      });
+
       return balance;
     }
 
@@ -801,9 +818,10 @@
       state.males.forEach(name => {
         const item = document.createElement('div');
         item.className = 'rest-balance-item';
+        const val = balance[name] || 0;
         item.innerHTML = `
           <span class="name">${name}</span>
-          <span class="balance">${balance[name] || 0} 天</span>
+          <span class="balance ${isAdmin ? 'editable' : ''}" data-name="${name}">${val} 天</span>
         `;
         maleRestDiv.appendChild(item);
       });
@@ -812,12 +830,69 @@
       state.females.forEach(name => {
         const item = document.createElement('div');
         item.className = 'rest-balance-item';
+        const val = balance[name] || 0;
         item.innerHTML = `
           <span class="name">${name}</span>
-          <span class="balance">${balance[name] || 0} 天</span>
+          <span class="balance ${isAdmin ? 'editable' : ''}" data-name="${name}">${val} 天</span>
         `;
         femaleRestDiv.appendChild(item);
       });
+
+      if (isAdmin) {
+        maleRestDiv.querySelectorAll('.balance.editable').forEach(el => {
+          el.addEventListener('click', () => editRestBalance(el.dataset.name, el));
+        });
+        femaleRestDiv.querySelectorAll('.balance.editable').forEach(el => {
+          el.addEventListener('click', () => editRestBalance(el.dataset.name, el));
+        });
+      }
+    }
+
+    function editRestBalance(name, el) {
+      if (!isAdmin) return;
+      const balance = calculateRestBalance();
+      const currentTotal = balance[name] || 0;
+      el.innerHTML = '';
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.value = currentTotal;
+      input.style.cssText = 'width:50px;text-align:center;border:1px solid #667eea;border-radius:4px;padding:2px 4px;font-size:14px;';
+      const suffix = document.createTextNode(' 天');
+      el.appendChild(input);
+      el.appendChild(suffix);
+      input.focus();
+      input.select();
+
+      const commit = () => {
+        const newTotal = parseInt(input.value) || 0;
+        // 计算需要的手动调整值 = 目标总数 - 当前自动计算数（不含调整）
+        const autoBalance = {};
+        const allPeople = [...state.males, ...state.females];
+        allPeople.forEach(n => autoBalance[n] = 0);
+        Object.entries(state.assignments).forEach(([dateStr, assignment]) => {
+          if (assignment.male) assignment.male.forEach(n => {
+            if (autoBalance[n] !== undefined) autoBalance[n]++;
+          });
+          if (assignment.female) assignment.female.forEach(n => {
+            if (autoBalance[n] !== undefined) autoBalance[n]++;
+          });
+          if (assignment.rest) assignment.rest.forEach(n => {
+            if (autoBalance[n] !== undefined) autoBalance[n]--;
+          });
+        });
+        const adjustment = newTotal - (autoBalance[name] || 0);
+        if (adjustment === 0) {
+          delete state.restAdjustments[name];
+        } else {
+          state.restAdjustments[name] = adjustment;
+        }
+        saveState();
+        renderRestBalance();
+        showToast(`已更新${name}的调休余额`);
+      };
+
+      input.addEventListener('change', commit);
+      input.addEventListener('blur', () => { renderRestBalance(); });
     }
 
     function renderPersonnel() {
