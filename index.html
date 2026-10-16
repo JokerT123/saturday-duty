@@ -163,6 +163,48 @@
       color: #666;
     }
 
+    .rest-balance-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .rest-balance-group h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 16px;
+      color: #333;
+    }
+
+    .rest-balance-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .rest-balance-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .rest-balance-item .name {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .rest-balance-item .balance {
+      font-weight: 600;
+      color: #667eea;
+      font-size: 16px;
+    }
+
     .today-badge {
       display: inline-block;
       background: #667eea;
@@ -412,12 +454,27 @@
             <th>日期</th>
             <th>男生值班</th>
             <th>女生值班</th>
-            <th>调休</th>
             <th class="admin-only" style="width:60px;"></th>
           </tr>
         </thead>
         <tbody id="scheduleBody"></tbody>
       </table>
+    </div>
+
+    <div class="card" id="restBalanceCard">
+      <div class="card-header">
+        <h2>调休余额</h2>
+      </div>
+      <div class="rest-balance-section">
+        <div class="rest-balance-group">
+          <h3><span class="dot male"></span>男生</h3>
+          <div class="rest-balance-list" id="maleRestBalance"></div>
+        </div>
+        <div class="rest-balance-group">
+          <h3><span class="dot female"></span>女生</h3>
+          <div class="rest-balance-list" id="femaleRestBalance"></div>
+        </div>
+      </div>
     </div>
 
     <div class="card admin-only" id="adminCard">
@@ -590,10 +647,8 @@
         const assignment = getAssignment(dateStr);
         const maleNames = assignment?.male || [];
         const femaleNames = assignment?.female || [];
-        const restNames = assignment?.rest || [];
         const maleDisplay = maleNames.length ? maleNames.join('、') : '待安排';
         const femaleDisplay = femaleNames.length ? femaleNames.join('、') : '待安排';
-        const restDisplay = restNames.length ? restNames.join('、') : '';
 
         const tr = document.createElement('tr');
         if (today) tr.className = 'today-row';
@@ -621,9 +676,6 @@
               <span class="name-text">${femaleDisplay}</span>
             </span>
           </td>
-          <td>
-            ${restDisplay ? `<span class="rest-badge">${restDisplay}</span>` : ''}
-          </td>
           <td class="admin-only">
             ${assignment ? `<button class="delete-row-btn" data-date="${dateStr}" title="删除该日排班">&times;</button>` : ''}
           </td>
@@ -648,6 +700,7 @@
       }
 
       updateBanner();
+      renderRestBalance();
     }
 
     function editName(dateStr, gender, badge) {
@@ -714,6 +767,57 @@
       };
 
       confirmBtn.addEventListener('click', commit);
+    }
+
+    function calculateRestBalance() {
+      const balance = {};
+      const allPeople = [...state.males, ...state.females];
+      allPeople.forEach(name => balance[name] = 0);
+
+      // 遍历所有排班，计算调休余额
+      Object.entries(state.assignments).forEach(([dateStr, assignment]) => {
+        // 值班 +1
+        if (assignment.male) assignment.male.forEach(name => {
+          if (balance[name] !== undefined) balance[name]++;
+        });
+        if (assignment.female) assignment.female.forEach(name => {
+          if (balance[name] !== undefined) balance[name]++;
+        });
+        // 调休 -1
+        if (assignment.rest) assignment.rest.forEach(name => {
+          if (balance[name] !== undefined) balance[name]--;
+        });
+      });
+
+      return balance;
+    }
+
+    function renderRestBalance() {
+      const balance = calculateRestBalance();
+      const maleRestDiv = document.getElementById('maleRestBalance');
+      const femaleRestDiv = document.getElementById('femaleRestBalance');
+
+      maleRestDiv.innerHTML = '';
+      state.males.forEach(name => {
+        const item = document.createElement('div');
+        item.className = 'rest-balance-item';
+        item.innerHTML = `
+          <span class="name">${name}</span>
+          <span class="balance">${balance[name] || 0} 天</span>
+        `;
+        maleRestDiv.appendChild(item);
+      });
+
+      femaleRestDiv.innerHTML = '';
+      state.females.forEach(name => {
+        const item = document.createElement('div');
+        item.className = 'rest-balance-item';
+        item.innerHTML = `
+          <span class="name">${name}</span>
+          <span class="balance">${balance[name] || 0} 天</span>
+        `;
+        femaleRestDiv.appendChild(item);
+      });
     }
 
     function renderPersonnel() {
