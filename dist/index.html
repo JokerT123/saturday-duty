@@ -151,6 +151,18 @@
     .name-badge.female { background: #fde8f0; color: #c0392b; }
     .name-badge .gender-icon { font-size: 12px; }
 
+    .rest-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      background: #f0f0f0;
+      color: #666;
+    }
+
     .today-badge {
       display: inline-block;
       background: #667eea;
@@ -400,6 +412,7 @@
             <th>日期</th>
             <th>男生值班</th>
             <th>女生值班</th>
+            <th>调休</th>
             <th class="admin-only" style="width:60px;"></th>
           </tr>
         </thead>
@@ -541,6 +554,19 @@
         if (!state.assignments[dateStr]) state.assignments[dateStr] = {};
         if (!state.assignments[dateStr].male) state.assignments[dateStr].male = [getDefaultName(i, 'male')];
         if (!state.assignments[dateStr].female) state.assignments[dateStr].female = [getDefaultName(i, 'female')];
+
+        // 添加调休：值班后的下一周自动调休
+        if (i > 0) {
+          const prevDateStr = formatDate(saturdays[i - 1]);
+          const prevAssignment = state.assignments[prevDateStr];
+          if (prevAssignment) {
+            if (!state.assignments[dateStr].rest) state.assignments[dateStr].rest = [];
+            const restSet = new Set(state.assignments[dateStr].rest);
+            if (prevAssignment.male) prevAssignment.male.forEach(name => restSet.add(name));
+            if (prevAssignment.female) prevAssignment.female.forEach(name => restSet.add(name));
+            state.assignments[dateStr].rest = [...restSet];
+          }
+        }
       });
       saveState();
       renderSchedule();
@@ -564,8 +590,10 @@
         const assignment = getAssignment(dateStr);
         const maleNames = assignment?.male || [];
         const femaleNames = assignment?.female || [];
+        const restNames = assignment?.rest || [];
         const maleDisplay = maleNames.length ? maleNames.join('、') : '待安排';
         const femaleDisplay = femaleNames.length ? femaleNames.join('、') : '待安排';
+        const restDisplay = restNames.length ? restNames.join('、') : '';
 
         const tr = document.createElement('tr');
         if (today) tr.className = 'today-row';
@@ -592,6 +620,9 @@
               <span class="gender-icon">&#9792;</span>
               <span class="name-text">${femaleDisplay}</span>
             </span>
+          </td>
+          <td>
+            ${restDisplay ? `<span class="rest-badge">${restDisplay}</span>` : ''}
           </td>
           <td class="admin-only">
             ${assignment ? `<button class="delete-row-btn" data-date="${dateStr}" title="删除该日排班">&times;</button>` : ''}
@@ -660,6 +691,17 @@
         if (!state.assignments[dateStr]) state.assignments[dateStr] = {};
         if (selected.length > 0) {
           state.assignments[dateStr][gender] = selected;
+
+          // 自动添加调休：值班后的下一周
+          const currentDate = new Date(dateStr);
+          const nextDate = new Date(currentDate);
+          nextDate.setDate(currentDate.getDate() + 7);
+          const nextDateStr = formatDate(nextDate);
+          if (!state.assignments[nextDateStr]) state.assignments[nextDateStr] = {};
+          if (!state.assignments[nextDateStr].rest) state.assignments[nextDateStr].rest = [];
+          const restSet = new Set(state.assignments[nextDateStr].rest);
+          selected.forEach(name => restSet.add(name));
+          state.assignments[nextDateStr].rest = [...restSet];
         } else {
           delete state.assignments[dateStr][gender];
           if (Object.keys(state.assignments[dateStr]).length === 0) {
