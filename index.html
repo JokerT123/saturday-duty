@@ -786,8 +786,15 @@
       const allPeople = [...state.males, ...state.females];
       allPeople.forEach(name => balance[name] = 0);
 
-      // 遍历所有排班，计算调休余额
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // 遍历所有排班，只计算已过去的日期
       Object.entries(state.assignments).forEach(([dateStr, assignment]) => {
+        const dutyDate = new Date(dateStr);
+        dutyDate.setHours(0, 0, 0, 0);
+        if (dutyDate >= today) return; // 还没到值班日期，不计入
+
         // 值班 +1
         if (assignment.male) assignment.male.forEach(name => {
           if (balance[name] !== undefined) balance[name]++;
@@ -865,11 +872,16 @@
 
       const commit = () => {
         const newTotal = parseInt(input.value) || 0;
-        // 计算需要的手动调整值 = 目标总数 - 当前自动计算数（不含调整）
+        // 计算需要的手动调整值 = 目标总数 - 当前自动计算数（不含调整，只算已过去的日期）
         const autoBalance = {};
         const allPeople = [...state.males, ...state.females];
         allPeople.forEach(n => autoBalance[n] = 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         Object.entries(state.assignments).forEach(([dateStr, assignment]) => {
+          const dutyDate = new Date(dateStr);
+          dutyDate.setHours(0, 0, 0, 0);
+          if (dutyDate >= today) return;
           if (assignment.male) assignment.male.forEach(n => {
             if (autoBalance[n] !== undefined) autoBalance[n]++;
           });
